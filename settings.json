@@ -1,0 +1,18 @@
+{
+    "mt5": {
+        "username": "88135948",
+        "password": "Zu*i2sTc",
+        "server": "MetaQuotes-Demo",
+        "mt5_pathway": "C:\\Program Files\\Meta Trader 5\\Terminal.exe",
+        "symbols": ["EURUSD", "USDJPY"],
+        "timeframe": "M1",
+        "strategy_name": "ema_cross_strategy",
+        "strategy_settings": {
+            "ema_one": 4,
+            "ema_two": 9,
+            "balance": 10000,
+            "amount_to_risk": 0.05,
+            "stop": true
+        }
+    }
+}
