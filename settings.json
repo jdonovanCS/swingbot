@@ -4,7 +4,7 @@
         "password": "Zu*i2sTc",
         "server": "MetaQuotes-Demo",
         "mt5_pathway": "C:\\Program Files\\Meta Trader 5\\Terminal.exe",
-        "symbols": ["EURUSD", "USDJPY"],
+        "symbols": ["EURUSD", "USDJPY", "USDCHF", "AUDUSD", "USDCAD", "GBPUSD", "NZDUSD", "EURJPY"],
         "timeframe": "M1",
         "strategy_name": "ema_cross_strategy",
         "strategy_settings": {

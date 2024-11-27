@@ -29,11 +29,11 @@ def make_trade(balance, comment, amount_to_risk, symbol, take_profit, stop_loss,
     balance = float(balance)
     balance = round(balance, 2)
     take_profit = float(take_profit)
-    take_profit = round(take_profit, 4)
+    take_profit = round(take_profit, 5)
     stop_loss = float(stop_loss)
-    stop_loss = round(stop_loss, 4)
+    stop_loss = round(stop_loss, 5)
     stop_price = float(stop_price)
-    stop_price = round(stop_price, 4)
+    stop_price = round(stop_price, 5)
 
     # 2. Get Lot Size
     lot_size = helper_functions.calc_lot_size(

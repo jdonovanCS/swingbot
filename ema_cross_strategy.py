@@ -45,15 +45,18 @@ def ema_cross_strategy(symbol, timeframe, strategy_settings):
     trade_event = data_trade.tail(1).copy()
     # See if 'ema_cross' is true
     if trade_event['ema_cross'].values:
-        # TODO: Cancel any positions with regard to this symbol
-        #  mt5_lib.close_filtered_positions(
-        #         symbol=symbol,
-        #         comment=comment_string
-        # )
+        
         # Make Trade requires balance, comment, amount_to_risk
         # Create comment
         comment_string = f"EMA_Cross_strategy_{symbol}"
         print(comment_string)
+        # TODO: Cancel any positions with regard to this symbol
+        pos_type=None
+        if trade_event['stop_price'].values > trade_event['stop_loss'].values:
+            pos_type = "BUY"
+        elif trade_event['stop_price'].values < trade_event['stop_loss'].values:
+            pos_type = "SELL"
+        mt5_lib.close_filtered_positions(symbol=symbol, pos_type=pos_type, comment=comment_string)
         # Make Trade
         make_trade_outcome = make_trade.make_trade(
             balance=strategy_settings['balance'],
@@ -110,7 +113,7 @@ def det_trade(data, ema_one, ema_two):
 
     # Set values for stop_price, stop_loss, take_profit where ema_cross is true and in buying position, otherwise set to selling position
     dataframe['stop_price'] = np.where((dataframe['ema_cross'] == True) & (dataframe['open']<dataframe['close']), dataframe['high'], dataframe['low'])
-    dataframe['stop_loss'] = np.where((dataframe['ema_cross'] == True) & (dataframe['open']<dataframe['close']), dataframe[ema_column]-(.0001*dataframe['stop_price']), dataframe[ema_column]+(.0001*dataframe['stop_price']))
+    dataframe['stop_loss'] = np.where((dataframe['ema_cross'] == True) & (dataframe['open']<dataframe['close']), dataframe[ema_column], dataframe[ema_column])
     dataframe['take_profit'] = np.where((dataframe['ema_cross'] == True) & (dataframe['open']<dataframe['close']), dataframe['stop_price']+(dataframe['stop_price']-dataframe['stop_loss']), dataframe['stop_price']-(dataframe['stop_loss']-dataframe['stop_price']))
 
     # Reset values where ema_cross is not true since the last statements assume it is either buying or selling
