@@ -66,4 +66,23 @@ def ema_cross_calculator(dataframe, ema_one, ema_two):
     # Return dataframe
     return dataframe
 
+def calc_rsi(data, window=14):
+    """Calculates the RSI for a given DataFrame and window."""
+
+    delta = data['Close'].diff()
+    up = delta.clip(lower=0)
+    down = -delta.clip(upper=0)
+
+    # Calculate the exponential moving averages for up and down moves
+    ema_up = up.ewm(com=window - 1, adjust=False).mean()
+    ema_down = down.ewm(com=window - 1, adjust=False).mean()
+
+    # Calculate the relative strength (RS)
+    rs = ema_up / ema_down
+
+    # Calculate the RSI
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi
+
 

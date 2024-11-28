@@ -56,15 +56,16 @@ project_settings = get_project_settings(import_filepath=settings_filepath)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
-def get_delta_values(ticker, dte):
+def get_delta_values(ticker, dte, current_price):
 
-    yf_ticker = yf.Ticker(ticker)
+    yf_ticker=ticker
+    # yf_ticker = yf.Ticker(ticker)
     # print(f'Retrieving options for {ticker}:\nyf_ticker.options')
     
     risk_free_rate = web.DataReader('SOFR', 'fred', datetime.datetime.today()-datetime.timedelta(days=5), datetime.datetime.today())['SOFR'].iloc[-1]
     # print(f'Retrieving risk-free interest rate: {risk_free_rate}')
 
-    current_price = get_current_price(ticker)
+    # current_price = get_current_price(ticker)
 
     count = 0
     while count < len(yf_ticker.options) and datetime.datetime.strptime(yf_ticker.options[count], "%Y-%m-%d").date() - datetime.date.today() < datetime.timedelta(dte):
@@ -128,13 +129,23 @@ def get_current_price(ticker):
     yf_ticker = yf.Ticker(ticker)
     if hasattr(yf_ticker.info, 'currentPrice'):
         current_price = yf_ticker.info['currentPrice']
-    else:
+    elif len(yf_ticker.history()) > 0:
         current_price=yf_ticker.history()['Close'].iloc[-1]
+    else:
+        current_price = np.inf
     return current_price
+
+
+def get_ticker(symbol):
+    return yf.Ticker(symbol)
+
+def get_data(ticker, period='1mo'):
+    return ticker.history(period=period)
 
 
 if args.symbol:
     print(get_delta_values(args.symbol, 350))
+
 
 
 

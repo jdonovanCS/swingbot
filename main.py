@@ -135,26 +135,40 @@ if __name__ == '__main__':
         symbols_to_observe = [args.symbol]
     else:
         # symbols_to_observe = tradingview_lib.get_most_active()['name']
-        symbols_to_observe = tradingview_lib.get_most_volume()['name']
+        symbols_to_observe = tradingview_lib.get_most_volume(limit=500)['name']
         # symbols_to_observe = tradingview_lib.get_most_obv()['name']
 
+    symbols_with_low_rsi = {}
     symbols_with_good_obv = {}
     symbols_with_good_deltas = {}
 
-    for symbol in tqdm(symbols_to_observe):
-        ticker_data = yfinance_lib.get_ticker_data(symbol)
-        obv = (np.sign(ticker_data['Close'].diff())*ticker_data['Volume']).fillna(0).cumsum()[-4:]
-        if len(obv) > 3 and obv.iloc[3] > obv.iloc[2] and obv.iloc[2] > obv.iloc[1] and obv.iloc[1] > obv.iloc[0]:
-            symbols_with_good_obv[symbol] = obv
+    # for symbol in tqdm(symbols_to_observe):
+    #     ticker_data = yfinance_lib.get_ticker_data(symbol)
+    #     obv = (np.sign(ticker_data['Close'].diff())*ticker_data['Volume']).fillna(0).cumsum()[-4:]
+    #     if len(obv) > 3 and obv.iloc[3] > obv.iloc[2] and obv.iloc[2] > obv.iloc[1] and obv.iloc[1] > obv.iloc[0]:
+    #         symbols_with_good_obv[symbol] = obv
 
-    print(f'Symbols with good on-balance volume: {symbols_with_good_obv}')
+    # print(f'Symbols with good on-balance volume: {symbols_with_good_obv}')
+    tickers = {symbol: yfinance_lib.get_ticker(symbol) for symbol in symbols_to_observe}
+
+    for symbol in tqdm(symbols_to_observe):
+        ticker = tickers[symbol]
+        ticker_data = yfinance_lib.get_data(ticker)
+        rsi = indicator_lib.calc_rsi(ticker_data)[-4:]        
+        if len(rsi) > 0 and (rsi.iloc[0] < 35 or rsi.iloc[1] < 35):
+            symbols_with_low_rsi[symbol] = rsi
     
-    for symbol in tqdm(symbols_with_good_obv):
-        deltas = yfinance_lib.get_delta_values(symbol, dte)
+    print(f'Symbols with low rsi: {symbols_with_low_rsi}')
+    
+
+
+    for symbol in tqdm(symbols_with_low_rsi):
+        ticker = tickers[symbol]
         current_price = yfinance_lib.get_current_price(symbol)
-        if deltas is None:
+        deltas = yfinance_lib.get_delta_values(ticker, dte, current_price)
+        if deltas is None or len(deltas['strike']) < 5:
             continue
-        indices_near_current_price = deltas.iloc[(deltas['strike']-current_price).abs().argsort()[:6]].index.tolist()
+        indices_near_current_price = deltas.iloc[(deltas['strike']-current_price).abs().argsort()[:5]].index.tolist()
         for i in indices_near_current_price:
             if deltas.iloc[i]['difference'] < 0:
                 break
@@ -162,6 +176,9 @@ if __name__ == '__main__':
                 if i == indices_near_current_price[len(indices_near_current_price)-1]:
                     symbols_with_good_deltas[symbol] = deltas
     
+    print('Symbols with low rsi:' )
+    for symobls in symbols_with_good_deltas:
+        print(symbol, ':', symbols_with_low_rsi[symbol])
     print(f'Symbols with good deltas too:\n{symbols_with_good_deltas}')
     print(f'Recommended: {list(symbols_with_good_deltas.keys())}')
 
