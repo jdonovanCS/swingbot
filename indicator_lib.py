@@ -85,4 +85,17 @@ def calc_rsi(data, window=14):
 
     return rsi
 
+def calc_trend_over_time(data, windows=[1,30,60,90,180,365]):
+    trend = 0
+    
+    for window in windows:
+        for window2 in windows:
+            if window2 <= window:
+                continue
+            if len(data['Close'])>= window and len(data['Close']) >= window2 and data['Close'].iloc[-1*window2] <= data['Close'].iloc[-1*window]:
+                trend += 1
+            else:
+                trend -= 1
+    return trend
+
 

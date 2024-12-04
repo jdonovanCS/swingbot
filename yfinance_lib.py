@@ -14,6 +14,7 @@ import argparse
 
 parser=argparse.ArgumentParser()
 parser.add_argument("--symbol")
+parser.add_argument("--dte", help="days till expiration to use in getting delta of options", default=50, type=int)
 args = parser.parse_args()
 
 # Location of settings.json
@@ -125,9 +126,9 @@ def get_ticker_data(ticker):
     yf_ticker = yf.Ticker(ticker)
     return yf_ticker.history(period="1mo")
 
-def get_current_price(ticker):
-    yf_ticker = yf.Ticker(ticker)
-    if hasattr(yf_ticker.info, 'currentPrice'):
+def get_current_price(ticker, use_last_close=False):
+    yf_ticker = ticker
+    if not use_last_close and hasattr(yf_ticker.info, 'currentPrice'):
         current_price = yf_ticker.info['currentPrice']
     elif len(yf_ticker.history()) > 0:
         current_price=yf_ticker.history()['Close'].iloc[-1]
@@ -143,8 +144,11 @@ def get_data(ticker, period='1mo'):
     return ticker.history(period=period)
 
 
-if args.symbol:
-    print(get_delta_values(args.symbol, 350))
+if __name__ == '__main__' and args.symbol:
+    ticker = get_ticker(args.symbol)
+    current_price = get_current_price(ticker, True)
+    print(current_price)
+    print(get_delta_values(ticker, args.dte, current_price))
 
 
 

@@ -7,16 +7,17 @@ import numpy as np
 import argparse
 from tqdm import tqdm
 
-parser=argparse.ArgumentParser()
-parser.add_argument("--symbol")
-args = parser.parse_args()
-
 # Custom Libraries
 # import mt5_lib
 # import ema_cross_strategy
 import indicator_lib
 import tradingview_lib
 import yfinance_lib
+
+parser=argparse.ArgumentParser()
+parser.add_argument("--symbol", help="symbol to use in this query", type=str)
+parser.add_argument("--dte", help="days till expiration to use in getting delta of options", default=50, type=int)
+args = parser.parse_args()
 
 # Location of settings.json
 settings_filepath = "settings.json" # <- This can be modified to be your own settings filepath
@@ -129,57 +130,77 @@ if __name__ == '__main__':
     # Make it so that all columns are shown
     pandas.set_option('display.max_columns', None)
 
-    dte = 50
+    dte = args.dte
 
     if args.symbol:
         symbols_to_observe = [args.symbol]
     else:
         # symbols_to_observe = tradingview_lib.get_most_active()['name']
-        symbols_to_observe = tradingview_lib.get_most_volume(limit=500)['name']
+        # symbols_to_observe = tradingview_lib.get_most_volume(limit=100)['name']
+        symbols_to_observe = tradingview_lib.get_most_volume_with_low_rsi(limit=200)['name']
         # symbols_to_observe = tradingview_lib.get_most_obv()['name']
 
+    windows = [30, 90, 180, 365]
+    symbols_with_positive_trend = {}
     symbols_with_low_rsi = {}
     symbols_with_good_obv = {}
     symbols_with_good_deltas = {}
+    tickers = {}
+    ticker_data = {}
+    current_price = {}
 
-    # for symbol in tqdm(symbols_to_observe):
-    #     ticker_data = yfinance_lib.get_ticker_data(symbol)
-    #     obv = (np.sign(ticker_data['Close'].diff())*ticker_data['Volume']).fillna(0).cumsum()[-4:]
-    #     if len(obv) > 3 and obv.iloc[3] > obv.iloc[2] and obv.iloc[2] > obv.iloc[1] and obv.iloc[1] > obv.iloc[0]:
-    #         symbols_with_good_obv[symbol] = obv
-
-    # print(f'Symbols with good on-balance volume: {symbols_with_good_obv}')
-    tickers = {symbol: yfinance_lib.get_ticker(symbol) for symbol in symbols_to_observe}
-
+    print("Getting ticker data")
     for symbol in tqdm(symbols_to_observe):
-        ticker = tickers[symbol]
-        ticker_data = yfinance_lib.get_data(ticker)
-        rsi = indicator_lib.calc_rsi(ticker_data)[-4:]        
-        if len(rsi) > 0 and (rsi.iloc[0] < 35 or rsi.iloc[1] < 35):
+        tickers[symbol] = yfinance_lib.get_ticker(symbol)
+        ticker_data[symbol] = yfinance_lib.get_data(tickers[symbol], period='ytd')
+
+    symbols_to_observe = [x for x in symbols_to_observe if not ticker_data[x].empty]
+
+    print("Calculating trends")
+    # symbols_with_positive_trend = symbols_to_observe
+    for symbol in tqdm(symbols_to_observe):
+        trend = indicator_lib.calc_trend_over_time(ticker_data[symbol], windows)
+        if trend > -2:
+            symbols_with_positive_trend[symbol] = trend
+    
+    print(f'Symbols with positive trends: {list(symbols_with_positive_trend.keys())}')
+
+    print("Calculating on balance volume")
+    # symbols_with_good_obv = symbols_with_positive_trend
+    for symbol in tqdm(symbols_with_positive_trend):
+        obv = (np.sign(ticker_data[symbol]['Close'].diff())*ticker_data[symbol]['Volume']).fillna(0).cumsum()[-4:]
+        # if len(obv) > 3 and obv.iloc[3] > obv.iloc[2] and obv.iloc[2] > obv.iloc[1] and obv.iloc[1] > obv.iloc[0]:
+        if len(obv) > 1 and obv.iloc[-1] > obv.iloc[-2]:
+            symbols_with_good_obv[symbol] = obv
+
+    print(f'Symbols with good on-balance volume: {list(symbols_with_good_obv.keys())}')
+    # symbols_with_low_rsi = symbols_with_good_obv
+    for symbol in tqdm(symbols_with_good_obv):
+        rsi = indicator_lib.calc_rsi(ticker_data[symbol])[-4:]        
+        if len(rsi) > 0 and (rsi.iloc[-1] < 35 or rsi.iloc[-2] < 35):
             symbols_with_low_rsi[symbol] = rsi
     
-    print(f'Symbols with low rsi: {symbols_with_low_rsi}')
-    
-
+    print(f'Symbols with low rsi and good on-balance volume: {list(symbols_with_low_rsi.keys())}')
 
     for symbol in tqdm(symbols_with_low_rsi):
-        ticker = tickers[symbol]
-        current_price = yfinance_lib.get_current_price(symbol)
-        deltas = yfinance_lib.get_delta_values(ticker, dte, current_price)
+        if tickers[symbol] is None:
+            continue
+        current_price[symbol] = yfinance_lib.get_current_price(tickers[symbol], True)
+        deltas = yfinance_lib.get_delta_values(tickers[symbol], dte, current_price[symbol])
         if deltas is None or len(deltas['strike']) < 5:
             continue
-        indices_near_current_price = deltas.iloc[(deltas['strike']-current_price).abs().argsort()[:5]].index.tolist()
+        indices_near_current_price = deltas.iloc[(deltas['strike']-current_price[symbol]).abs().argsort()[:5]].index.tolist()
         for i in indices_near_current_price:
-            if deltas.iloc[i]['difference'] < 0:
+            if deltas.loc[i]['difference'] < 0:
                 break
             else:
                 if i == indices_near_current_price[len(indices_near_current_price)-1]:
                     symbols_with_good_deltas[symbol] = deltas
     
-    print('Symbols with low rsi:' )
-    for symobls in symbols_with_good_deltas:
-        print(symbol, ':', symbols_with_low_rsi[symbol])
-    print(f'Symbols with good deltas too:\n{symbols_with_good_deltas}')
+    # print('Symbols with low rsi:' )
+    # for symobls in symbols_with_good_deltas:
+    #     print(symbol, ':', symbols_with_low_rsi[symbol])
+    print(f'Symbols with low rsi, good obv, and good deltas too:\n{list(symbols_with_good_deltas.keys())}')
     print(f'Recommended: {list(symbols_with_good_deltas.keys())}')
 
 
