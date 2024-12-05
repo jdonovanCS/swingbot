@@ -11,12 +11,6 @@ import numpy as np
 from scipy.stats import norm
 import argparse
 
-
-parser=argparse.ArgumentParser()
-parser.add_argument("--symbol")
-parser.add_argument("--dte", help="days till expiration to use in getting delta of options", default=50, type=int)
-args = parser.parse_args()
-
 # Location of settings.json
 settings_filepath = "settings.json" # <- This can be modified to be your own settings filepath
 
@@ -144,7 +138,13 @@ def get_data(ticker, period='1mo'):
     return ticker.history(period=period)
 
 
-if __name__ == '__main__' and args.symbol:
+if __name__ == '__main__':
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--symbol", help="symbol to use in this query", type=str)
+    parser.add_argument("--dte", help="days till expiration to use in getting delta of options", default=50, type=int)
+    parser.add_argument("--rsi", help="rsi to filter, only stocks with rsi <= this will be selected", default=35, type=int)
+    args = parser.parse_args()
+    
     ticker = get_ticker(args.symbol)
     current_price = get_current_price(ticker, True)
     print(current_price)

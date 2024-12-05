@@ -10,10 +10,10 @@ def get_most_volume(limit=100):
     nrows, ret = Query().select('name', 'close', 'volume').order_by('volume', ascending=False).limit(limit).get_scanner_data()
     return ret
 
-def get_most_volume_with_low_rsi(limit=100):
+def get_most_volume_with_low_rsi(rsi=35, limit=100):
     nrows, ret = (Query().select('name', 'close', 'volume')
                         .where
-                            (Column('RSI')<=35).order_by('volume', ascending=False).limit(limit=limit)).get_scanner_data()
+                            (Column('RSI')<=rsi).order_by('volume', ascending=False).limit(limit=limit)).get_scanner_data()
     return ret
 
 def get_testing_queries(limit=100):

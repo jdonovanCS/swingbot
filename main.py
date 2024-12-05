@@ -8,16 +8,11 @@ import argparse
 from tqdm import tqdm
 
 # Custom Libraries
-# import mt5_lib
-# import ema_cross_strategy
+import mt5_lib
+import ema_cross_strategy
 import indicator_lib
 import tradingview_lib
 import yfinance_lib
-
-parser=argparse.ArgumentParser()
-parser.add_argument("--symbol", help="symbol to use in this query", type=str)
-parser.add_argument("--dte", help="days till expiration to use in getting delta of options", default=50, type=int)
-args = parser.parse_args()
 
 # Location of settings.json
 settings_filepath = "settings.json" # <- This can be modified to be your own settings filepath
@@ -122,6 +117,13 @@ def get_time(timeframe):
 
 # Main function
 if __name__ == '__main__':
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--symbol", help="symbol to use in this query", type=str)
+    parser.add_argument("--dte", help="days till expiration to use in getting delta of options", default=50, type=int)
+    parser.add_argument("--rsi", help="rsi to filter, only stocks with rsi <= this will be selected", default=35, type=int)
+    parser.add_argument("--num_symbols", help="number of symbols to analyze", default=100, type=int)
+    args = parser.parse_args()
+
     print("Let's build an awesome trading bot!!!")
     # Import settings.json
     project_settings = get_project_settings(import_filepath=settings_filepath)
@@ -137,7 +139,7 @@ if __name__ == '__main__':
     else:
         # symbols_to_observe = tradingview_lib.get_most_active()['name']
         # symbols_to_observe = tradingview_lib.get_most_volume(limit=100)['name']
-        symbols_to_observe = tradingview_lib.get_most_volume_with_low_rsi(limit=200)['name']
+        symbols_to_observe = tradingview_lib.get_most_volume_with_low_rsi(rsi=args.rsi, limit=args.num_symbols)['name']
         # symbols_to_observe = tradingview_lib.get_most_obv()['name']
 
     windows = [30, 90, 180, 365]
@@ -174,11 +176,11 @@ if __name__ == '__main__':
             symbols_with_good_obv[symbol] = obv
 
     print(f'Symbols with good on-balance volume: {list(symbols_with_good_obv.keys())}')
-    # symbols_with_low_rsi = symbols_with_good_obv
-    for symbol in tqdm(symbols_with_good_obv):
-        rsi = indicator_lib.calc_rsi(ticker_data[symbol])[-4:]        
-        if len(rsi) > 0 and (rsi.iloc[-1] < 35 or rsi.iloc[-2] < 35):
-            symbols_with_low_rsi[symbol] = rsi
+    symbols_with_low_rsi = symbols_with_good_obv
+    # for symbol in tqdm(symbols_with_good_obv):
+    #     rsi = indicator_lib.calc_rsi(ticker_data[symbol])[-4:]        
+    #     if len(rsi) > 0 and (rsi.iloc[-1] < 35 or rsi.iloc[-2] < 35):
+    #         symbols_with_low_rsi[symbol] = rsi
     
     print(f'Symbols with low rsi and good on-balance volume: {list(symbols_with_low_rsi.keys())}')
 
